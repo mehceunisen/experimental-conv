@@ -35,16 +35,21 @@ class Conv2d():
     return np.pad(
             x.reshape(B * C, W, H), padding)[padding:-padding].reshape(B, C, P_W, P_H)
 
-    
-
-  def forward(self, x):
-    x = self.pad(x) if self.kwargs['padding'] else x # padded
+  def __get_filter_top_left_corner(self, x):
     S, K = self.kwargs['stride'], self.kwargs['kernel_size']
 
     __kernel_tl_points = np.arange(0, x.shape[-1] - K + S, S)
     _conv_coords = np.stack([np.repeat(__kernel_tl_points, len(__kernel_tl_points), axis=0), 
                  np.repeat(__kernel_tl_points.reshape(1, -1), len(__kernel_tl_points),
                  axis=0).flatten()], axis=1)
+    return _conv_coords
+
+  def forward(self, x):
+    x = self.pad(x) if self.kwargs['padding'] else x # padded
+    S, K = self.kwargs['stride'], self.kwargs['kernel_size']
+
+    _conv_coords = self.__get_filter_top_left_corner(x) 
+    print(_conv_coords)
     # do matrix-wise multiplication for each coord in _conv_coords
 
   def backward(self, loss):
