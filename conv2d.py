@@ -60,7 +60,7 @@ class Conv2d():
     __conv_range_x = _conv_coords[:, 0][:, np.newaxis] + np.arange(K, dtype=np.int8) 
     __conv_range_y = _conv_coords[:, 1][:, np.newaxis] + np.arange(K, dtype=np.int8) 
 
-    a = X[:, :, __conv_range_x[:, :, np.newaxis], __conv_range_y[:, np.newaxis, :]]
+    X = X[:, :, __conv_range_x[:, :, np.newaxis], __conv_range_y[:, np.newaxis, :]]
     
   def backward(self, loss):
     pass
@@ -71,12 +71,3 @@ class Conv2d():
 
 l1 = Conv2d(kernel_size=3, padding=0, stride=2)
 l1.forward(np.arange(30 * 7 ** 2).reshape(10,3,7,7))
-
-# # # # # # # 
-# # # # # # # 
-# # # # # # # 
-# # # # # # # 
-# # # # # # # 
-# # # # # # # 
-# # # # # # # 
-
