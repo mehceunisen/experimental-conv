@@ -29,20 +29,17 @@ class Conv2d():
     self.bias = np.random.normal(loc=.0, scale=.4,
         size=(output_channel))
     
-  def pad(self, x):
-    self.input_dimensions = {
-      'B':x.shape[0],
-      'C':x.shape[1],
-      'W':x.shape[2],
-      'H':x.shape[3],
-    }
-
+  def __pad(self, x):
     B, C, W, H = x.shape[0], x.shape[1], x.shape[2], x.shape[3]
     S, K = self.kwargs['stride'], self.kwargs['kernel_size']
-    padding = ceil(((W - 1) * S + 1 - H + (K - 1)) / 2)
-    P_W, P_H = W + 2 * padding, H + 2 * padding
-    return np.pad(
-            x.reshape(B * C, W, H), padding)[padding:-padding].reshape(B, C, P_W, P_H), padding
+    
+    pad_a = pad_b = ((W - 1) * S + 1 - H + (K - 1)) / 2
+     
+    if pad_a % 1 != 0:
+        pad_a = int(pad_a) + 1
+        pad_b = int(pad_b)
+    
+    return np.pad(x, ((0,0), (0,0), (pad_a, pad_b), (pad_a, pad_b))), pad_a
 
   def __get_filter_top_left_corner(self, x):
     S, K = self.kwargs['stride'], self.kwargs['kernel_size']
@@ -53,24 +50,35 @@ class Conv2d():
         axis=0).flatten()], axis=1)
     
     return _conv_coords
+
+  def __create_patches(self, X):
+    K = self.kwargs['kernel_size']
+    _conv_coords = self.__get_filter_top_left_corner(X) 
+    _conv_range_x = _conv_coords[:, 0][:, np.newaxis] + np.arange(K, dtype=np.int8) 
+    _conv_range_y = _conv_coords[:, 1][:, np.newaxis] + np.arange(K, dtype=np.int8) 
+
+    X = X[:, :, _conv_range_x[:, :, np.newaxis], _conv_range_y[:, np.newaxis, :]]
+    return X
   #assumption, input and the kernel is square (H = W), might fix it later
   def forward(self, X):
-    #assert axis != 3
-    #
-    X, padding_size = self.pad(X) if self.kwargs['padding'] else X, 0 # padded
-    S, K = self.kwargs['stride'], self.kwargs['kernel_size']
-    B, H, O_C = X.shape[0], X.shape[-1], self.kwargs['output_channel'] 
-    __out_dim = int((H + 2 * padding_size - K) / S) + 1 if padding_size == 0 else H 
-    _conv_coords = self.__get_filter_top_left_corner(X) 
-    __conv_range_x = _conv_coords[:, 0][:, np.newaxis] + np.arange(K, dtype=np.int8) 
-    __conv_range_y = _conv_coords[:, 1][:, np.newaxis] + np.arange(K, dtype=np.int8) 
+    assert(len(X.shape) == 4 and "Input dimensions should be as (B, C, W, H)")
 
-    X = X[:, :, __conv_range_x[:, :, np.newaxis], __conv_range_y[:, np.newaxis, :]]
-    X = np.sum(X[:, :, :, np.newaxis] * self.filters, axis=(1, -1, -2)).transpose((0, 2, 1)).reshape(B, O_C, __out_dim, __out_dim)
-     
-    # TODO: sum over last two axes, then sum over the input channels, 
-    #       and then reshape it to (B, O_C, 2K - 1 / S, 2K - 1 / S)
-    print("output\n", X, "\n", X.shape)
+    B, C, W, H = X.shape[0], X.shape[1], X.shape[2], X.shape[3]
+    O_C = self.kwargs['output_channel']
+    S, K = self.kwargs['stride'], self.kwargs['kernel_size']
+    
+    assert(K <= W and "Kernel size must be smaller than input (H,W)")
+
+    X, padding_size = self.__pad(X) if self.kwargs['padding'] else (X, 0) # padded
+    _out_dim = int((H + 2 * padding_size - K) / S) + 1 if padding_size == 0 else H 
+    
+    X = self.__create_patches(X)
+
+    X = (np.sum(X[:, :, :, np.newaxis] * self.filters, axis=(1, -1, -2))
+    .transpose((0, 2, 1)).reshape(B, O_C, _out_dim, _out_dim))
+    + self.bias[:, np.newaxis, np.newaxis]
+
+    return X
 
   def backward(self, loss):
     pass
@@ -79,5 +87,5 @@ class Conv2d():
     pass
   
 
-l1 = Conv2d(kernel_size=3, padding=1, stride=1, output_channel=6)
+l1 = Conv2d(kernel_size=4, padding=1, stride=1, output_channel=6)
 l1.forward(np.arange(3 * 4 ** 2).reshape(1,3,4,4))
