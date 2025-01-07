@@ -37,13 +37,14 @@ class Conv2d():
      
     if pad_a % 1 != 0:
         pad_a = int(pad_a) + 1
-        pad_b = int(pad_b)
-    
-    return np.pad(x, ((0,0), (0,0), (pad_a, pad_b), (pad_a, pad_b))), pad_a
+    pad_a = int(pad_a)
+    pad_b = int(pad_b)
+
+    return np.pad(x, ((0,0), (0,0), (pad_a, pad_b), (pad_a, pad_b))), pad_a + pad_b
 
   def __get_filter_top_left_corner(self, x):
     S, K = self.kwargs['stride'], self.kwargs['kernel_size']
-    __kernel_tl_points = np.arange(0, x.shape[-1] - K + S, S)
+    __kernel_tl_points = np.arange(0, x.shape[-1] - K + 1, S)
     _conv_coords = np.stack([
         np.repeat(__kernel_tl_points, len(__kernel_tl_points), axis=0), 
         np.repeat(__kernel_tl_points.reshape(1, -1), len(__kernel_tl_points),
@@ -70,8 +71,7 @@ class Conv2d():
     assert(K <= W and "Kernel size must be smaller than input (H,W)")
 
     X, padding_size = self.__pad(X) if self.kwargs['padding'] else (X, 0) # padded
-    _out_dim = int((H + 2 * padding_size - K) / S) + 1 if padding_size == 0 else H 
-    
+    _out_dim = int((H + padding_size - K) / S) + 1 if padding_size == 0 else H 
     X = self.__create_patches(X)
 
     X = (np.sum(X[:, :, :, np.newaxis] * self.filters, axis=(1, -1, -2))
@@ -87,5 +87,5 @@ class Conv2d():
     pass
   
 
-l1 = Conv2d(kernel_size=4, padding=1, stride=1, output_channel=6)
+l1 = Conv2d(kernel_size=3, padding=0, stride=2, output_channel=6)
 l1.forward(np.arange(3 * 4 ** 2).reshape(1,3,4,4))
