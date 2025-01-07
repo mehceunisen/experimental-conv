@@ -12,7 +12,7 @@ class Conv2d():
     assert(kernel_size >= 0 and "Kernel size must be positive")
     assert(input_channel >= 0 and "Input channel must be positive")
     assert(output_channel >= 0 and "Output channel must be positive")
-    assert(stride > 0 and 'Stride must be positive')
+    assert(stride > 0 and ')Stride must be positive')
     assert((padding == 0 or padding == 1) and 'Padding must be 0 | 1')
 
     self.kwargs = {
@@ -25,6 +25,7 @@ class Conv2d():
 
     self.filters = np.random.normal(loc=.0, scale=.4,
         size=(output_channel, kernel_size, kernel_size))
+    self.filters = np.ones(output_channel * kernel_size ** 2).reshape(output_channel, kernel_size, kernel_size)
     self.bias = np.random.normal(loc=.0, scale=.4,
         size=(output_channel))
     
@@ -56,14 +57,18 @@ class Conv2d():
   def forward(self, X):
     X = self.pad(X) if self.kwargs['padding'] else X # padded
     S, K = self.kwargs['stride'], self.kwargs['kernel_size']
-
+    print("X", X[0])
+    print("filters", self.filters)
     _conv_coords = self.__get_filter_top_left_corner(X) 
     __conv_range_x = _conv_coords[:, 0][:, np.newaxis] + np.arange(K, dtype=np.int8) 
     __conv_range_y = _conv_coords[:, 1][:, np.newaxis] + np.arange(K, dtype=np.int8) 
 
     X = X[:, :, __conv_range_x[:, :, np.newaxis], __conv_range_y[:, np.newaxis, :]]
-    X = np.sum(X[:, :, :, np.newaxis] @ self.filters, axis=(1, 2))
-
+    X = np.multiply(X[:, :, :, np.newaxis], self.filters)
+    
+    # TODO: sum over last two axes, then sum over the input channels, 
+    #       and then reshape it to (B, O_C, 2K - 1 / S, 2K - 1 / S)
+    print("output\n", X)
 
   def backward(self, loss):
     pass
@@ -72,5 +77,5 @@ class Conv2d():
     pass
   
 
-l1 = Conv2d(kernel_size=3, padding=0, stride=2)
-l1.forward(np.arange(30 * 7 ** 2).reshape(10,3,7,7))
+l1 = Conv2d(kernel_size=3, padding=0, stride=1, output_channel=6)
+l1.forward(np.arange(3 * 4 ** 2).reshape(1,3,4,4))
