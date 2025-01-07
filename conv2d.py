@@ -1,5 +1,6 @@
 import numpy as np
 from math import floor, ceil
+
 class Conv2d():
   def __init__(self, 
                kernel_size = 3,
@@ -22,7 +23,7 @@ class Conv2d():
     'padding' : padding
     }
 
-    self.filter = np.random.normal(loc=.0, scale=.4,
+    self.filters = np.random.normal(loc=.0, scale=.4,
         size=(output_channel, kernel_size, kernel_size))
     self.bias = np.random.normal(loc=.0, scale=.4,
         size=(output_channel))
@@ -44,11 +45,11 @@ class Conv2d():
 
   def __get_filter_top_left_corner(self, x):
     S, K = self.kwargs['stride'], self.kwargs['kernel_size']
-
     __kernel_tl_points = np.arange(0, x.shape[-1] - K + S, S)
-    _conv_coords = np.stack([np.repeat(__kernel_tl_points, len(__kernel_tl_points), axis=0), 
-                 np.repeat(__kernel_tl_points.reshape(1, -1), len(__kernel_tl_points),
-                 axis=0).flatten()], axis=1)
+    _conv_coords = np.stack([
+        np.repeat(__kernel_tl_points, len(__kernel_tl_points), axis=0), 
+        np.repeat(__kernel_tl_points.reshape(1, -1), len(__kernel_tl_points),
+        axis=0).flatten()], axis=1)
     
     return _conv_coords
     
@@ -61,7 +62,9 @@ class Conv2d():
     __conv_range_y = _conv_coords[:, 1][:, np.newaxis] + np.arange(K, dtype=np.int8) 
 
     X = X[:, :, __conv_range_x[:, :, np.newaxis], __conv_range_y[:, np.newaxis, :]]
-    
+    X = np.sum(X[:, :, :, np.newaxis] @ self.filters, axis=(1, 2))
+
+
   def backward(self, loss):
     pass
 
